@@ -3,6 +3,11 @@
   publish = "dist"
   functions = "netlify/functions"
 
+# Pinned because netlify/functions/model-shot.js uses the v2 function signature
+# (default-exported handler returning a Response), which needs Node 18+.
+[build.environment]
+  NODE_VERSION = "22"
+
 # Functions declare their own path via `export const config`, and function routes
 # are matched before redirects. This mapping is belt-and-braces so /api/* reaches
 # the function either way, and must stay ABOVE the SPA catch-all below.
