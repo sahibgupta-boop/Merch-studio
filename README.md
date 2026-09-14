@@ -54,9 +54,46 @@ Implemented:
   composer and the Gemini step will consume, and it is usable on its own today:
   copy it into any image tool.
 
-Not yet built: the SVG composition pipeline, the Gemini serverless function,
-300 DPI raster export, mockup compositing, the tech pack, and the
-collections/batch features for sellers.
+- **The SVG composer.** A brief becomes real vector artwork: seven layout
+  archetypes, eight procedural motif families chosen by style, seven text
+  treatments, and a distress mask for the worn styles. Authored at 100 units per
+  inch so export to 300 DPI is a pure scale with no re-layout.
+- **Deterministic output.** A seeded PRNG means the same seed and the same fields
+  always produce byte-identical artwork — a design can be reprinted a year later.
+- **Text that cannot overflow.** Lines are fitted with `textLength` +
+  `lengthAdjust` instead of glyph measurement, so a line occupies exactly the width
+  the layout allocated whatever font the renderer resolves.
+- **300 DPI export** with genuinely transparent backgrounds, plus source SVGs with
+  the typeface embedded as base64 `@font-face`, a tech pack, and the brief — all in
+  one zip.
+- **Product view.** The composed artwork renders onto the garment silhouette at
+  true scale, in the chosen garment colour.
+- **Worn model shots** via Gemini image-to-image: the composed artwork is sent as a
+  conditioning image so the model wears that exact design rather than an
+  approximation of it.
+
+Not yet built: the collections/batch features for sellers, listing metadata
+generation, and the Gemini text step that enriches a brief before composition.
+
+## The output pipeline
+
+```
+form  →  brief (JSON)  →  composer  →  SVG at true physical size
+                                        ├─ 300 DPI transparent PNG   (print)
+                                        ├─ SVG + embedded font       (vector source)
+                                        ├─ on-garment product view   (preview)
+                                        └─ Gemini image-to-image     (worn model shot)
+```
+
+Two things that are easy to get wrong and are handled deliberately:
+
+- **Fonts.** An SVG rasterised through `Image()` renders in an isolated context
+  that cannot see the page's webfonts, so exported text would silently fall back to
+  a default face. The font bytes are fetched and inlined as base64 `@font-face`
+  before rasterising. See `src/lib/fonts.js`.
+- **Conditioning image size.** A full 3600×4800 separation base64-encodes to
+  several megabytes and exceeds the function's body limit, so the model shot is
+  conditioned on a 1024px downscale — far more than enough to reproduce the art.
 
 ## Running locally
 
@@ -98,10 +135,16 @@ src/data/vocabularies.js  style, feel, era, typography and palette vocabularies
 src/lib/silhouette.js     parametric garment geometry (one builder, not 25 drawings)
 src/lib/colour.js         CIE Lab conversion, ΔE2000, ink separation checks
 src/lib/designSpec.js     spec model, constraint pass, brief builder
+src/lib/composer.js       brief -> vector artwork, deterministic from seed
+src/lib/motifs.js         procedural motif families, mapped to styles
+src/lib/rng.js            seeded PRNG for reproducibility
+src/lib/fonts.js          font inlining so exports keep the right typeface
+src/lib/export.js         300 DPI rasterisation, zip pack builder
 src/components/           garment picker, fit & size panel, placement map
 src/pages/Studio.jsx      the studio screen
 netlify/functions/        server-side Gemini proxy
   _config.js              env accessor — the only place the key name appears
+  model-shot.js           Gemini image-to-image worn product shot
 ```
 
 ## A note on the size charts

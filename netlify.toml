@@ -3,6 +3,14 @@
   publish = "dist"
   functions = "netlify/functions"
 
+# Functions declare their own path via `export const config`, and function routes
+# are matched before redirects. This mapping is belt-and-braces so /api/* reaches
+# the function either way, and must stay ABOVE the SPA catch-all below.
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
 [[redirects]]
   from = "/*"
   to = "/index.html"

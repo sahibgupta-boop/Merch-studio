@@ -12,7 +12,8 @@ function Detail({ s, stroke }) {
 
 export default function GarmentSilhouette({
   garment, size, view = 'front', colour,
-  activePlacements = [], highlight = null, showAreas = true
+  activePlacements = [], highlight = null, showAreas = true,
+  artworks = null
 }) {
   const tint = colour?.hex || '#e5e5e3'
   const line = colour?.dark ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.45)'
@@ -39,12 +40,16 @@ export default function GarmentSilhouette({
           const y = panel.y0 + Math.max(12, (panel.len - h) / 2)
           return (
             <g key={id}>
-              <rect x={CX - w / 2} y={y} width={w} height={h}
-                fill={highlight === id ? 'rgba(232,80,58,0.12)' : 'none'}
-                stroke={areaStroke} strokeWidth="1.4" strokeDasharray="5 3" />
-              <text x={CX} y={y - 5} textAnchor="middle" fontSize="9" fill={areaStroke} className="font-mono">
-                {a.w}″ × {a.h}″
-              </text>
+              {artworks?.[id]
+                ? <image href={artworks[id]} x={CX - w / 2} y={y} width={w} height={h} preserveAspectRatio="xMidYMid meet" />
+                : <>
+                    <rect x={CX - w / 2} y={y} width={w} height={h}
+                      fill={highlight === id ? 'rgba(232,80,58,0.12)' : 'none'}
+                      stroke={areaStroke} strokeWidth="1.4" strokeDasharray="5 3" />
+                    <text x={CX} y={y - 5} textAnchor="middle" fontSize="9" fill={areaStroke} className="font-mono">
+                      {a.w}″ × {a.h}″
+                    </text>
+                  </>}
             </g>
           )
         })}
@@ -69,11 +74,14 @@ export default function GarmentSilhouette({
         if (!a?.enabled) return null
         const r = placementRect(garment, size, id, PLACEMENTS[id], a)
         const on = highlight === id
+        const art = artworks?.[id]
         return (
           <g key={id}>
-            <rect x={r.x} y={r.y} width={r.w} height={r.h}
-              fill={on ? (colour?.dark ? 'rgba(255,209,102,0.16)' : 'rgba(232,80,58,0.12)') : 'none'}
-              stroke={areaStroke} strokeWidth={on ? 2 : 1.3} strokeDasharray={on ? '' : '5 3'} />
+            {art
+              ? <image href={art} x={r.x} y={r.y} width={r.w} height={r.h} preserveAspectRatio="xMidYMid meet" />
+              : <rect x={r.x} y={r.y} width={r.w} height={r.h}
+                  fill={on ? (colour?.dark ? 'rgba(255,209,102,0.16)' : 'rgba(232,80,58,0.12)') : 'none'}
+                  stroke={areaStroke} strokeWidth={on ? 2 : 1.3} strokeDasharray={on ? '' : '5 3'} />}
             {on && (
               <text x={r.cx} y={r.y - 4} textAnchor="middle" fontSize="9"
                 fill={areaStroke} className="font-mono">

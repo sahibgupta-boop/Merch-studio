@@ -6,17 +6,23 @@ import StylePanel from '../components/StylePanel.jsx'
 import ProductionPanel from '../components/ProductionPanel.jsx'
 import ValidationList from '../components/ValidationList.jsx'
 import BriefPreview from '../components/BriefPreview.jsx'
+import OutputPanel from '../components/OutputPanel.jsx'
+import ArtworkSheet from '../components/ArtworkSheet.jsx'
 import { GARMENTS_BY_ID, enabledPlacements } from '../data/garments.js'
 import { COLOURS_BY_ID } from '../data/garmentColours.js'
 import { STYLES, FEELS } from '../data/vocabularies.js'
 import { METHODS_BY_ID, colourCeiling } from '../data/printMethods.js'
 import { REFERENCE_SIZE } from '../data/sizeCharts.js'
 import { defaultSpec, validate, errorsOf, buildBrief, briefToPrompt } from '../lib/designSpec.js'
+import { composeAll } from '../lib/composer.js'
+import { buildPack, downloadBlob, svgDataUri, svgToPngBase64, withFonts } from '../lib/export.js'
+import { fontStyleFor, preloadPairing } from '../lib/fonts.js'
 
 const TABS = [
   { id: 'garment', label: 'Garment' },
   { id: 'style', label: 'Concept & style' },
-  { id: 'production', label: 'Colour & production' }
+  { id: 'production', label: 'Colour & production' },
+  { id: 'output', label: 'Output' }
 ]
 
 export default function Studio() {
@@ -28,6 +34,8 @@ export default function Studio() {
   const [highlight, setHighlight] = useState(null)
   const [perSizeScaling, setPerSizeScaling] = useState(false)
   const [spec, setSpec] = useState(defaultSpec)
+  const [artworks, setArtworks] = useState(null)
+  const [showOnGarment, setShowOnGarment] = useState(true)
 
   const garment = GARMENTS_BY_ID[garmentId]
   const garmentColour = COLOURS_BY_ID[colourId]
@@ -69,6 +77,61 @@ export default function Studio() {
   const toggle = (id) =>
     setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
 
+  // Load the chosen typeface for on-screen preview; export inlines it separately.
+  useEffect(() => { preloadPairing(spec.fontPairing) }, [spec.fontPairing])
+
+  // Any change to the inputs invalidates composed artwork, so it is cleared rather
+  // than left on screen showing something the current spec would no longer produce.
+  useEffect(() => { setArtworks(null) }, [spec, garmentId, colourId, selected, size])
+
+  const generate = () => {
+    const composed = composeAll(brief)
+    setArtworks(composed)
+    setTab('output')
+  }
+
+  // Artwork keyed by placement for the garment preview, so the mockup is the real
+  // composed vector rather than a stand-in.
+  const artworkUris = useMemo(() => {
+    if (!artworks) return null
+    return Object.fromEntries(artworks.map((a) => [a.placement.id, svgDataUri(a.svg)]))
+  }, [artworks])
+
+  const downloadPack = async () => {
+    const blob = await buildPack(brief, artworks, { prompt, techPack: brief })
+    const name = (brief.concept.theme || 'design').toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 40)
+    downloadBlob(blob, `${name}_${brief.production.garment.id}_${brief.seed}.zip`)
+  }
+
+  const modelShot = async () => {
+    const front = artworks.find((a) => a.placement.id.startsWith('front'))
+      || artworks.find((a) => a.placement.id.includes('chest'))
+      || artworks[0]
+    const fontStyle = await fontStyleFor(spec.fontPairing)
+    const imageBase64 = await svgToPngBase64(withFonts(front.svg, fontStyle), front.pxWidth, front.pxHeight, 1024)
+
+    const res = await fetch('/api/model-shot', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        imageBase64,
+        garment: garment.label,
+        colour: garmentColour.label,
+        placement: front.placement.label,
+        theme: spec.theme,
+        audience: spec.audience,
+        styleNote: [...spec.styles, ...spec.feels].join(', ')
+      })
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      const err = new Error(data.message || `Request failed (${res.status}).`)
+      err.kind = data.error
+      throw err
+    }
+    return data
+  }
+
   return (
     <div className="min-h-screen bg-ink text-white">
       <header className="sticky top-0 z-10 border-b border-edge bg-ink/95 backdrop-blur">
@@ -102,6 +165,26 @@ export default function Studio() {
           {tab === 'production' && (
             <ProductionPanel spec={spec} set={set} garmentColour={garmentColour} issueFor={issueFor} />
           )}
+          {tab === 'output' && (
+            <div className="space-y-5">
+              <OutputPanel
+                artworks={artworks} blocked={blocked} seed={spec.seed} theme={spec.theme}
+                onGenerate={generate} onDownloadPack={downloadPack} onModelShot={modelShot}
+              />
+              {artworks && (
+                <div>
+                  <div className="mb-2 flex items-center justify-between">
+                    <h3 className="text-sm font-medium text-white">Separations</h3>
+                    <button type="button" onClick={() => setShowOnGarment((v) => !v)}
+                      className="rounded-lg border border-edge px-2.5 py-1 text-xs text-muted transition-colors hover:text-white">
+                      {showOnGarment ? 'On garment colour' : 'On transparency'}
+                    </button>
+                  </div>
+                  <ArtworkSheet artworks={artworks} garmentColour={garmentColour} onGround={showOnGarment} />
+                </div>
+              )}
+            </div>
+          )}
         </section>
 
         <section className="min-w-0 lg:sticky lg:top-20 lg:self-start">
@@ -110,6 +193,7 @@ export default function Studio() {
             colourId={colourId} onColour={setColourId}
             activePlacements={selected} highlight={highlight}
             perSizeScaling={perSizeScaling} onPerSizeScaling={setPerSizeScaling}
+            artworks={artworkUris}
           />
         </section>
 

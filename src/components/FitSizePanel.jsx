@@ -12,7 +12,8 @@ const VIEWS = [
 
 export default function FitSizePanel({
   garment, size, onSize, colourId, onColour,
-  activePlacements, highlight, perSizeScaling, onPerSizeScaling
+  activePlacements, highlight, perSizeScaling, onPerSizeScaling,
+  artworks = null
 }) {
   const [view, setView] = useState('front')
   const colour = COLOURS_BY_ID[colourId]
@@ -40,10 +41,11 @@ export default function FitSizePanel({
           <GarmentSilhouette
             garment={garment} size={size} view={view} colour={colour}
             activePlacements={activePlacements} highlight={highlight}
+            artworks={artworks}
           />
         </div>
         <div className="pointer-events-none absolute left-3 top-3 font-mono text-[11px] text-muted">
-          {size} · {view}
+          {size} · {view}{artworks ? ' · product' : ''}
         </div>
         {size !== REFERENCE_SIZE && (
           <div className="pointer-events-none absolute right-3 top-3 rounded bg-black/50 px-2 py-1 text-[11px] text-amber-300/90">
