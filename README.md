@@ -55,10 +55,15 @@ npm run dev
 The key is read server-side only, by a Netlify function. It must never appear in
 client code or in the repo.
 
+The variable is named **`GEMINI_API_KEY_SG`**. Server code reads it through the
+single accessor in `netlify/functions/_config.js` — never inline the name elsewhere,
+so renaming it later is a one-line change.
+
 1. Netlify dashboard → your site → **Site configuration → Environment variables**
 2. **Add a variable**
-   - **Key:** `GEMINI_API_KEY` — this field is the variable *name*. It accepts only
-     letters, numbers and underscores, so pasting the key itself here is rejected.
+   - **Key:** `GEMINI_API_KEY_SG` — this field is the variable *name*. It accepts
+     only letters, numbers and underscores, so pasting the key itself here is
+     rejected.
    - **Value:** the actual key. Under **Values**, either pick *Same value for all
      deploy contexts* and paste it once, or paste it into **Production** and
      **Deploy Previews** separately.
@@ -76,7 +81,8 @@ src/data/placements.js    placement definitions, measured from HPS
 src/lib/silhouette.js     parametric garment geometry (one builder, not 25 drawings)
 src/components/           garment picker, fit & size panel, placement map
 src/pages/Studio.jsx      the studio screen
-netlify/functions/        server-side Gemini proxy (to come)
+netlify/functions/        server-side Gemini proxy
+  _config.js              env accessor — the only place the key name appears
 ```
 
 ## A note on the size charts
