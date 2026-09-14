@@ -1,0 +1,86 @@
+# Merch Studio
+
+A print-on-demand apparel design generator. You enter garment type, style, feel,
+niche, palette and print method; it produces production-ready design packs —
+300 DPI transparent print separations per placement, garment mockups, and a tech
+pack — rather than a picture of a t-shirt.
+
+Full product spec: [`docs/SPEC.md`](docs/SPEC.md)
+
+## The core idea
+
+An AI-generated JPEG is not a print file. Every output has to satisfy a
+transparent background, exact physical dimensions at 300 DPI, a colour count the
+print method can actually reproduce, and a minimum stroke width. So the split is:
+
+- **Gemini** decides *what* the design is — it returns a structured JSON design
+  brief (concept, palette, layout archetype, copy) from your form inputs.
+- **The SVG composer** decides *how it is built* — deterministic geometry at exact
+  print dimensions, so the file a print shop receives is valid by construction.
+
+The app works with no API key configured; the composer falls back to deterministic
+template composition.
+
+## Current state
+
+Implemented:
+
+- **25 garment types** across tees, polos, shirts and sweats/outerwear, each with
+  its own print-area map — see `src/data/garments.js`
+- **Per-garment placement rules.** A zipper polo has no full-front placement
+  because the zip splits the panel; a pullover hoodie's lower front is blocked by
+  the kangaroo pocket; an oxford's left chest is taken by the pocket. Blocked
+  placements are shown struck through with the reason, never hidden.
+- **Fit & size panel** with a to-scale parametric SVG preview per garment
+  (front / back / sleeve), garment-specific size charts in inches and cm,
+  S–5XL, and per-size scaling bands.
+- **True-scale previews.** Geometry is derived from each garment's size chart at a
+  fixed units-per-inch, so changing size grows the garment while a print area stays
+  the same physical size — which is the relationship that matters before you commit
+  artwork.
+
+Not yet built: the style/feel input form, the SVG composition pipeline, the
+Gemini serverless function, raster export, mockup compositing, the tech pack, and
+the collections/batch features for sellers.
+
+## Running locally
+
+```bash
+npm install
+npm run dev
+```
+
+## Configuring the Gemini key
+
+The key is read server-side only, by a Netlify function. It must never appear in
+client code or in the repo.
+
+1. Netlify dashboard → your site → **Site configuration → Environment variables**
+2. **Add a variable**
+   - **Key:** `GEMINI_API_KEY` — this field is the variable *name*. It accepts only
+     letters, numbers and underscores, so pasting the key itself here is rejected.
+   - **Value:** the actual key. Under **Values**, either pick *Same value for all
+     deploy contexts* and paste it once, or paste it into **Production** and
+     **Deploy Previews** separately.
+3. Leave **Secret** ticked, and keep the Builds / Functions / Runtime scopes.
+
+For local development, copy `.env.example` to `.env` and fill it in — `.env` is
+gitignored.
+
+## Layout
+
+```
+src/data/garments.js      garment catalogue + per-garment print-area maps
+src/data/sizeCharts.js    size charts by fit family, size bands
+src/data/placements.js    placement definitions, measured from HPS
+src/lib/silhouette.js     parametric garment geometry (one builder, not 25 drawings)
+src/components/           garment picker, fit & size panel, placement map
+src/pages/Studio.jsx      the studio screen
+netlify/functions/        server-side Gemini proxy (to come)
+```
+
+## A note on the size charts
+
+The values in `src/data/sizeCharts.js` are industry-typical reference dimensions.
+Blanks vary meaningfully between brands — confirm against your supplier's spec
+sheet before committing a print run.
