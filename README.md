@@ -38,10 +38,25 @@ Implemented:
   fixed units-per-inch, so changing size grows the garment while a print area stays
   the same physical size — which is the relationship that matters before you commit
   artwork.
+- **The style/feel form** — theme, niche, audience, occasion, style (max 3), mood,
+  detail level, era, layout archetype, text treatment, headline/subline, type
+  pairing, palette, print method, seed and variation count.
+- **Print method as a real constraint.** Method drives the colour ceiling, whether
+  gradients are possible, minimum stroke width, and how much detail will survive.
+  Switching to a method with a lower ceiling trims the palette rather than leaving
+  an unexportable spec; palettes that exceed the ceiling are disabled, not truncated.
+- **Ink separation checking in CIE Lab.** Every ink is compared to the garment
+  colour with ΔE2000, and flagged when it drops below the point where it stops
+  reading on fabric. Navy on black fails this; navy on sand passes.
+- **A constraint pass** separating errors that block export from warnings the
+  seller can knowingly override — see `src/lib/designSpec.js`.
+- **A live design brief** in both structured JSON and prose. This is what the
+  composer and the Gemini step will consume, and it is usable on its own today:
+  copy it into any image tool.
 
-Not yet built: the style/feel input form, the SVG composition pipeline, the
-Gemini serverless function, raster export, mockup compositing, the tech pack, and
-the collections/batch features for sellers.
+Not yet built: the SVG composition pipeline, the Gemini serverless function,
+300 DPI raster export, mockup compositing, the tech pack, and the
+collections/batch features for sellers.
 
 ## Running locally
 
@@ -78,7 +93,11 @@ gitignored.
 src/data/garments.js      garment catalogue + per-garment print-area maps
 src/data/sizeCharts.js    size charts by fit family, size bands
 src/data/placements.js    placement definitions, measured from HPS
+src/data/printMethods.js  print methods and what each can physically reproduce
+src/data/vocabularies.js  style, feel, era, typography and palette vocabularies
 src/lib/silhouette.js     parametric garment geometry (one builder, not 25 drawings)
+src/lib/colour.js         CIE Lab conversion, ΔE2000, ink separation checks
+src/lib/designSpec.js     spec model, constraint pass, brief builder
 src/components/           garment picker, fit & size panel, placement map
 src/pages/Studio.jsx      the studio screen
 netlify/functions/        server-side Gemini proxy
